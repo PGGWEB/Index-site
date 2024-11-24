@@ -1,28 +1,28 @@
-import React, { useState } from "react";
-import axios from "axios";
-import { parseStringPromise } from "xml2js";
+import React, { useState } from 'react';
+import axios from 'axios';
+import { XMLParser } from 'fast-xml-parser';
 
 function App() {
-  const [domain, setDomain] = useState("");
+  const [domain, setDomain] = useState('');
   const [loading, setLoading] = useState(false);
   const [indexablePages, setIndexablePages] = useState([]);
-  const [robotsTxt, setRobotsTxt] = useState("");
-  const [sitemapXml, setSitemapXml] = useState("");
+  const [robotsTxt, setRobotsTxt] = useState('');
+  const [sitemapXml, setSitemapXml] = useState('');
   const [error, setError] = useState(null);
 
   const handleScanSite = async () => {
     if (!domain) {
-      alert("Vă rugăm să introduceți un domeniu valid.");
+      alert('Vă rugăm să introduceți un domeniu valid.');
       return;
     }
 
     setLoading(true);
     setError(null);
     setIndexablePages([]);
-    setRobotsTxt("");
-    setSitemapXml("");
+    setRobotsTxt('');
+    setSitemapXml('');
 
-    const domainUrl = domain.startsWith("http") ? domain : `https://${domain}`;
+    const domainUrl = domain.startsWith('http') ? domain : `https://${domain}`;
     const domainOrigin = new URL(domainUrl).origin;
 
     try {
@@ -36,7 +36,7 @@ function App() {
 
       // Extragem URL-urile sitemap din robots.txt
       let sitemapUrls = [];
-      const robotsLines = robotsTxtContent.split("\n");
+      const robotsLines = robotsTxtContent.split('\n');
       robotsLines.forEach((line) => {
         const match = line.match(/^\s*Sitemap:\s*(.*)$/i);
         if (match) {
@@ -58,29 +58,30 @@ function App() {
       const fetchSitemap = async (sitemapUrl) => {
         try {
           const sitemapResponse = await axios.get(
-            `https://api.allorigins.win/get?url=${encodeURIComponent(
-              sitemapUrl
-            )}`
+            `https://api.allorigins.win/get?url=${encodeURIComponent(sitemapUrl)}`
           );
           const sitemapData = sitemapResponse.data.contents;
 
           // Adăugăm conținutul sitemap-ului la starea sitemapXml
-          setSitemapXml((prev) => prev + "\n" + sitemapData);
+          setSitemapXml((prev) => prev + '\n' + sitemapData);
 
-          const result = await parseStringPromise(sitemapData);
+          const parser = new XMLParser();
+          const result = parser.parse(sitemapData);
 
           if (result.urlset && result.urlset.url) {
             // Acesta este un sitemap cu URL-uri
-            result.urlset.url.forEach((urlObj) => {
-              if (urlObj.loc && urlObj.loc[0]) {
-                allUrls.push(urlObj.loc[0]);
+            const urls = result.urlset.url;
+            urls.forEach((urlObj) => {
+              if (urlObj.loc) {
+                allUrls.push(urlObj.loc);
               }
             });
           } else if (result.sitemapindex && result.sitemapindex.sitemap) {
             // Acesta este un sitemap index
-            for (const sitemapObj of result.sitemapindex.sitemap) {
-              if (sitemapObj.loc && sitemapObj.loc[0]) {
-                const childSitemapUrl = sitemapObj.loc[0];
+            const sitemaps = result.sitemapindex.sitemap;
+            for (const sitemapObj of sitemaps) {
+              if (sitemapObj.loc) {
+                const childSitemapUrl = sitemapObj.loc;
                 if (!allSitemapUrls.includes(childSitemapUrl)) {
                   allSitemapUrls.push(childSitemapUrl);
                   await fetchSitemap(childSitemapUrl);
@@ -89,10 +90,7 @@ function App() {
             }
           }
         } catch (error) {
-          console.error(
-            `Eroare la preluarea sitemap-ului ${sitemapUrl}:`,
-            error
-          );
+          console.error(`Eroare la preluarea sitemap-ului ${sitemapUrl}:`, error);
         }
       };
 
@@ -109,7 +107,7 @@ function App() {
       setLoading(false);
     } catch (err) {
       console.error(err);
-      setError("A apărut o eroare. Verificați consola pentru detalii.");
+      setError('A apărut o eroare. Verificați consola pentru detalii.');
       setLoading(false);
     }
   };
@@ -124,9 +122,9 @@ function App() {
         placeholder="Introduceți domeniul (ex: exemplu.ro)"
       />
       <button onClick={handleScanSite} disabled={loading}>
-        {loading ? "Se încarcă..." : "Verifică Site-ul"}
+        {loading ? 'Se încarcă...' : 'Verifică Site-ul'}
       </button>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
       {robotsTxt && (
         <div className="results">
           <h2>robots.txt:</h2>
